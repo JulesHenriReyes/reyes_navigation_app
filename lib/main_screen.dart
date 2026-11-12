@@ -5,14 +5,15 @@ import 'profile_page.dart';
 import 'social_media_page.dart';
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  final int initialIndex;
+  const MainScreen({super.key, this.initialIndex = 0});
 
   @override
   State<MainScreen> createState() => _MainScreenState();
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int selectedIndex = 0;
+  late int selectedIndex;
 
   final List<Widget> pages = const [
     HomePage(),
@@ -20,6 +21,12 @@ class _MainScreenState extends State<MainScreen> {
     ProfilePage(),
     SocialMediaPage(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    selectedIndex = widget.initialIndex;
+  }
 
   @override
   Widget build(BuildContext context) {
