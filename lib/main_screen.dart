@@ -1,31 +1,34 @@
 import 'package:flutter/material.dart';
-import 'home_page.dart';
 import 'calculator_screen.dart';
+import 'demo_auth.dart';
+import 'home_page.dart';
 import 'profile_page.dart';
-import 'social_media_page.dart';
+import 'social_media/social_media.dart';
 
 class MainScreen extends StatefulWidget {
-  final int initialIndex;
-  const MainScreen({super.key, this.initialIndex = 0});
+  const MainScreen({super.key});
 
   @override
   State<MainScreen> createState() => _MainScreenState();
 }
 
 class _MainScreenState extends State<MainScreen> {
-  late int selectedIndex;
+  int selectedIndex = 0;
 
-  final List<Widget> pages = const [
-    HomePage(),
-    CalculatorScreen(),
-    ProfilePage(),
-    SocialMediaPage(),
-  ];
+  late final List<Widget> pages;
 
   @override
   void initState() {
     super.initState();
-    selectedIndex = widget.initialIndex;
+
+    pages = [
+      const HomePage(),
+      const CalculatorScreen(),
+      const ProfilePage(),
+      SocialMediaPage(
+        username: DemoAuth.currentUsername ?? 'admin',
+      ),
+    ];
   }
 
   @override
