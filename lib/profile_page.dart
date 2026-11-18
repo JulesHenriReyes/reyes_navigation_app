@@ -3,7 +3,12 @@ import 'demo_auth.dart';
 import 'login_screen.dart';
 
 class ProfilePage extends StatelessWidget {
-  const ProfilePage({super.key});
+  final String username;
+
+  const ProfilePage({
+    super.key,
+    required this.username,
+  });
 
   void logout(BuildContext context) {
     DemoAuth.logout();
@@ -20,7 +25,7 @@ class ProfilePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Profile'),
+        title: const Text('Student Profile'),
       ),
       body: ListView(
         padding: const EdgeInsets.all(24),
@@ -42,6 +47,11 @@ class ProfilePage extends StatelessWidget {
               fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Logged in as: $username',
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
           const Card(

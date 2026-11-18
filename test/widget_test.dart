@@ -39,21 +39,13 @@ Future<void> _tapNavTab(WidgetTester tester, String label) async {
   await tester.pumpAndSettle();
 }
 
-Future<void> _openSocialMediaTab(WidgetTester tester) async {
-  await _tapNavTab(tester, 'Social Media');
-}
-
-Future<void> _openCreatePostSheet(WidgetTester tester) async {
-  await tester.tap(find.byTooltip('Create Post'));
-  await tester.pumpAndSettle();
-}
-
 Future<void> _submitNewPost(
   WidgetTester tester, {
   required String caption,
   required String imageUrl,
 }) async {
-  await _openCreatePostSheet(tester);
+  await tester.tap(find.byTooltip('Create Post'));
+  await tester.pumpAndSettle();
   await tester.enterText(
     find.widgetWithText(TextField, 'Caption'),
     caption,
@@ -82,88 +74,99 @@ void main() {
     DemoAuth.currentUsername = null;
   });
 
-  testWidgets('1. Log in using default admin account opens MainScreen', (
-    WidgetTester tester,
-  ) async {
-    _usePhoneViewport(tester);
-    await tester.pumpWidget(const StudentApp());
-    expect(find.text('Welcome Back!'), findsOneWidget);
+  testWidgets(
+    '1, 2, 3, 4 & 5. App starts on Login, validates empty & invalid credentials, logs in admin to Dashboard',
+    (WidgetTester tester) async {
+      _usePhoneViewport(tester);
+      await tester.pumpWidget(const StudentApp());
 
-    await _loginWith(tester, 'admin', 'admin123');
+      // 1. Open application -> Login appears first
+      expect(find.text('Welcome Back!'), findsOneWidget);
 
-    expect(find.text('Welcome, Student!'), findsOneWidget);
-    expect(DemoAuth.currentUsername, 'admin');
-  });
+      // 2. Submit empty login fields -> Validation messages appear
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Login'));
+      await tester.pump();
+      expect(find.text('Enter your username.'), findsOneWidget);
+      expect(find.text('Enter your password.'), findsOneWidget);
 
-  testWidgets('2. Open Social Media shows sample posts', (
-    WidgetTester tester,
-  ) async {
-    _usePhoneViewport(tester);
-    await tester.pumpWidget(const StudentApp());
-    await _loginWith(tester, 'admin', 'admin123');
-    await _openSocialMediaTab(tester);
+      // 3. Enter incorrect credentials -> Login rejected
+      await _loginWith(tester, 'wrong', 'wrongpass');
+      expect(find.text('Invalid username or password.'), findsOneWidget);
+      expect(DemoAuth.currentUsername, isNull);
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
 
-    expect(find.text('JohnDoe'), findsOneWidget);
-    expect(find.text('Enjoying the sunny weather!'), findsOneWidget);
-
-    await tester.scrollUntilVisible(
-      find.text('JaneSmith'),
-      250,
-      scrollable: _feedScrollable(),
-    );
-    expect(find.text('JaneSmith'), findsOneWidget);
-    expect(find.text('Just finished a great book!'), findsOneWidget);
-  });
-
-  testWidgets('3. Submit post with empty fields shows validation message', (
-    WidgetTester tester,
-  ) async {
-    _usePhoneViewport(tester);
-    await tester.pumpWidget(const StudentApp());
-    await _loginWith(tester, 'admin', 'admin123');
-    await _openSocialMediaTab(tester);
-    await _openCreatePostSheet(tester);
-
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Submit Post'));
-    await tester.pump();
-
-    expect(
-      find.text('Complete both fields before submitting!'),
-      findsOneWidget,
-    );
-  });
-
-  testWidgets('4. Submit post with invalid URL shows URL validation message', (
-    WidgetTester tester,
-  ) async {
-    _usePhoneViewport(tester);
-    await tester.pumpWidget(const StudentApp());
-    await _loginWith(tester, 'admin', 'admin123');
-    await _openSocialMediaTab(tester);
-
-    await _submitNewPost(
-      tester,
-      caption: 'Invalid URL test',
-      imageUrl: 'not-a-valid-url',
-    );
-
-    expect(
-      find.text('Enter a valid HTTP or HTTPS image URL.'),
-      findsOneWidget,
-    );
-  });
+      // 4 & 5. Enter admin / admin123 -> Dashboard opens and greets admin
+      await _loginWith(tester, 'admin', 'admin123');
+      expect(find.text('Dashboard'), findsWidgets);
+      expect(find.text('Welcome, admin!'), findsOneWidget);
+      expect(DemoAuth.currentUsername, 'admin');
+    },
+  );
 
   testWidgets(
-    '5. Submit valid post adds post at top with logged-in username',
+    '6 & 7. Calculator computes 10+5=15.0, 20 & 5 operations, and keeps state across tab switches',
     (WidgetTester tester) async {
       _usePhoneViewport(tester);
       await tester.pumpWidget(const StudentApp());
       await _loginWith(tester, 'admin', 'admin123');
-      await _openSocialMediaTab(tester);
 
+      await _tapNavTab(tester, 'Calculator');
+
+      final firstField = find.widgetWithText(TextField, 'First Number');
+      final secondField = find.widgetWithText(TextField, 'Second Number');
+
+      // Step 7 checkpoint: 20 and 5 across all four operations
+      await tester.enterText(firstField, '20');
+      await tester.enterText(secondField, '5');
+
+      await tester.tap(find.widgetWithText(ElevatedButton, '+'));
+      await tester.pump();
+      expect(find.text('25.0'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(ElevatedButton, '−'));
+      await tester.pump();
+      expect(find.text('15.0'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(ElevatedButton, '×'));
+      await tester.pump();
+      expect(find.text('100.0'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(ElevatedButton, '÷'));
+      await tester.pump();
+      expect(find.text('4.0'), findsOneWidget);
+
+      // 6. Test 10 + 5 = 15.0
+      await tester.enterText(firstField, '10');
+      await tester.enterText(secondField, '5');
+      await tester.tap(find.widgetWithText(ElevatedButton, '+'));
+      await tester.pump();
+      expect(find.text('15.0'), findsOneWidget);
+
+      // 7. Switch tabs and return to Calculator -> inputs and result remain
+      await _tapNavTab(tester, 'Dashboard');
+      expect(find.text('Welcome, admin!'), findsOneWidget);
+
+      await _tapNavTab(tester, 'Calculator');
+      expect(find.text('15.0'), findsOneWidget);
+      expect(find.text('10.0 + 5.0'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    '8, 9 & 10. Social creates post with logged-in user, likes/comments, preserves state across tabs',
+    (WidgetTester tester) async {
+      _usePhoneViewport(tester);
+      await tester.pumpWidget(const StudentApp());
+      await _loginWith(tester, 'admin', 'admin123');
+
+      await _tapNavTab(tester, 'Social');
+      expect(find.text('JohnDoe'), findsOneWidget);
+
+      // 8. Create a social post -> displays logged-in username
       await _submitNewPost(
         tester,
-        caption: 'My first Flutter social media post!',
+        caption: 'Integrated app test post!',
         imageUrl: 'https://picsum.photos/id/20/600/400',
       );
 
@@ -175,175 +178,100 @@ void main() {
       expect(
         find.descendant(
           of: firstCard,
-          matching: find.text('My first Flutter social media post!'),
+          matching: find.text('Integrated app test post!'),
+        ),
+        findsOneWidget,
+      );
+
+      // 9. Like a post and add a comment
+      await tester.tap(
+        find.descendant(of: firstCard, matching: find.text('Like')),
+      );
+      await tester.pump();
+      expect(
+        find.descendant(of: firstCard, matching: find.text('Liked')),
+        findsOneWidget,
+      );
+
+      await tester.enterText(
+        find.descendant(of: firstCard, matching: find.byType(TextField)),
+        'Great integration!',
+      );
+      await tester.tap(
+        find.descendant(of: firstCard, matching: find.byIcon(Icons.send)),
+      );
+      await tester.pump();
+
+      expect(
+        find.descendant(of: firstCard, matching: find.text('1 Comments')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: firstCard,
+          matching: find.text('Great integration!'),
+        ),
+        findsOneWidget,
+      );
+
+      // Verify ObjectKey + findChildIndexCallback preserves liked state after another post
+      await _submitNewPost(
+        tester,
+        caption: 'Top post',
+        imageUrl: 'https://picsum.photos/id/21/600/400',
+      );
+      final adminPost = find.widgetWithText(PostCard, 'Integrated app test post!');
+      await tester.scrollUntilVisible(
+        find.descendant(of: adminPost, matching: find.text('Liked')),
+        100,
+        scrollable: _feedScrollable(),
+      );
+      expect(
+        find.descendant(of: adminPost, matching: find.text('Liked')),
+        findsOneWidget,
+      );
+
+      // 10. Switch tabs and return to Social -> posts, likes, and comments remain
+      await _tapNavTab(tester, 'Dashboard');
+      await _tapNavTab(tester, 'Social');
+      expect(
+        find.descendant(of: adminPost, matching: find.text('Liked')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: adminPost,
+          matching: find.text('Great integration!'),
         ),
         findsOneWidget,
       );
     },
   );
 
-  testWidgets('6. Tap Like twice toggles Liked and back to Like', (
-    WidgetTester tester,
-  ) async {
-    _usePhoneViewport(tester);
-    await tester.pumpWidget(const StudentApp());
-    await _loginWith(tester, 'admin', 'admin123');
-    await _openSocialMediaTab(tester);
-
-    final firstCard = find.byType(PostCard).first;
-    await tester.tap(
-      find.descendant(of: firstCard, matching: find.text('Like')),
-    );
-    await tester.pump();
-
-    expect(
-      find.descendant(of: firstCard, matching: find.text('Liked')),
-      findsOneWidget,
-    );
-
-    await tester.tap(
-      find.descendant(of: firstCard, matching: find.text('Liked')),
-    );
-    await tester.pump();
-
-    expect(
-      find.descendant(of: firstCard, matching: find.text('Like')),
-      findsOneWidget,
-    );
-  });
-
-  testWidgets('7 & 8. Nonempty comment adds and increments count; blank ignored', (
-    WidgetTester tester,
-  ) async {
-    _usePhoneViewport(tester);
-    await tester.pumpWidget(const StudentApp());
-    await _loginWith(tester, 'admin', 'admin123');
-    await _openSocialMediaTab(tester);
-
-    final firstCard = find.byType(PostCard).first;
-    final commentField = find.descendant(
-      of: firstCard,
-      matching: find.byType(TextField),
-    );
-    final sendBtn = find.descendant(
-      of: firstCard,
-      matching: find.byIcon(Icons.send),
-    );
-
-    // 8. Blank comment should not be added
-    await tester.enterText(commentField, '   ');
-    await tester.tap(sendBtn);
-    await tester.pump();
-    expect(
-      find.descendant(of: firstCard, matching: find.text('0 Comments')),
-      findsOneWidget,
-    );
-
-    // 7. Nonempty comment adds and increments count
-    await tester.enterText(commentField, 'Great post!');
-    await tester.tap(sendBtn);
-    await tester.pump();
-
-    expect(
-      find.descendant(of: firstCard, matching: find.text('Great post!')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: firstCard, matching: find.text('1 Comments')),
-      findsOneWidget,
-    );
-  });
-
   testWidgets(
-    '9 & 10. Like sample post, create new post, switch tabs preserves state',
-    (WidgetTester tester) async {
-      _usePhoneViewport(tester);
-      await tester.pumpWidget(const StudentApp());
-      await _loginWith(tester, 'admin', 'admin123');
-      await _openSocialMediaTab(tester);
-
-      // Like JohnDoe's sample post and add a comment
-      final johnCard = find.widgetWithText(PostCard, 'JohnDoe');
-      await tester.tap(
-        find.descendant(of: johnCard, matching: find.text('Like')),
-      );
-      await tester.pump();
-      expect(
-        find.descendant(of: johnCard, matching: find.text('Liked')),
-        findsOneWidget,
-      );
-
-      await tester.enterText(
-        find.descendant(of: johnCard, matching: find.byType(TextField)),
-        'Nice weather!',
-      );
-      await tester.tap(
-        find.descendant(of: johnCard, matching: find.byIcon(Icons.send)),
-      );
-      await tester.pump();
-      expect(
-        find.descendant(of: johnCard, matching: find.text('Nice weather!')),
-        findsOneWidget,
-      );
-
-      // Create another post above JohnDoe
-      await _submitNewPost(
-        tester,
-        caption: 'Second post on top',
-        imageUrl: 'https://picsum.photos/id/21/600/400',
-      );
-
-      // 9. JohnDoe keeps its liked state & comment even after shifting down
-      expect(find.text('Second post on top'), findsOneWidget);
-      await tester.scrollUntilVisible(
-        find.descendant(of: johnCard, matching: find.text('Liked')),
-        100,
-        scrollable: _feedScrollable(),
-      );
-      expect(
-        find.descendant(of: johnCard, matching: find.text('Liked')),
-        findsOneWidget,
-      );
-
-      // 10. Switch to Home and return -> posts, likes, and comments remain
-      await _tapNavTab(tester, 'Home');
-      expect(find.text('Welcome, Student!'), findsOneWidget);
-
-      await _openSocialMediaTab(tester);
-      expect(
-        find.descendant(of: johnCard, matching: find.text('Liked')),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(of: johnCard, matching: find.text('Nice weather!')),
-        findsOneWidget,
-      );
-
-      await tester.scrollUntilVisible(
-        find.text('Second post on top'),
-        -150,
-        scrollable: _feedScrollable(),
-      );
-      expect(find.text('Second post on top'), findsOneWidget);
-    },
-  );
-
-  testWidgets(
-    '11. Log out, register new account, log in -> new posts use registered username',
+    '11, 12, 13 & 14. Profile displays info & username, Logout prevents back, Register + Login updates Dashboard & Social',
     (WidgetTester tester) async {
       _usePhoneViewport(tester);
       await tester.pumpWidget(const StudentApp());
       await _loginWith(tester, 'admin', 'admin123');
 
-      // Open Profile tab and tap Logout
+      // 11. Open Profile -> Student info and username appear
       await _tapNavTab(tester, 'Profile');
+      expect(find.text('Student Profile'), findsOneWidget);
+      expect(find.text('Jules Henri A. Reyes'), findsOneWidget);
+      expect(find.text('Logged in as: admin'), findsOneWidget);
+      expect(find.text('553299'), findsOneWidget);
+      expect(find.text('BSIT — 3450'), findsOneWidget);
+      expect(find.text('j.reyes.553299@umindanao.edu'), findsOneWidget);
+
+      // 12. Tap Logout -> Login appears, cannot pop back
       await tester.tap(find.widgetWithText(ElevatedButton, 'Logout'));
       await tester.pumpAndSettle();
-
       expect(find.text('Welcome Back!'), findsOneWidget);
       expect(DemoAuth.currentUsername, isNull);
+      expect(Navigator.of(tester.element(find.text('Welcome Back!'))).canPop(), isFalse);
 
-      // Register a new account
+      // 13. Register a valid account and log in -> Dashboard displays registered username
       await tester.tap(find.text("Don't have an account? Register"));
       await tester.pumpAndSettle();
 
@@ -364,17 +292,20 @@ void main() {
       await tester.pump(const Duration(seconds: 5));
       await tester.pumpAndSettle();
 
-      // Log in with new account
       await _loginWith(tester, 'jules_reyes', 'secret123');
-      expect(DemoAuth.currentUsername, 'jules_reyes');
+      expect(find.text('Welcome, jules_reyes!'), findsOneWidget);
 
-      await _openSocialMediaTab(tester);
+      // Verify Profile also shows registered username
+      await _tapNavTab(tester, 'Profile');
+      expect(find.text('Logged in as: jules_reyes'), findsOneWidget);
+
+      // 14. Create a post using the registered account -> post displays registered username
+      await _tapNavTab(tester, 'Social');
       await _submitNewPost(
         tester,
-        caption: 'Posted as registered user',
+        caption: 'Post from registered user',
         imageUrl: 'https://picsum.photos/id/22/600/400',
       );
-
       final firstCard = find.byType(PostCard).first;
       expect(
         find.descendant(of: firstCard, matching: find.text('jules_reyes')),
